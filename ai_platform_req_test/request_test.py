@@ -6,6 +6,7 @@ from PIL import Image
 import googleapiclient.discovery
 from google.api_core.client_options import ClientOptions
 from object_detection.utils import visualization_utils as viz_utils
+import base64
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -58,43 +59,54 @@ def predict_json(project, region, model, instances, version=None):
     return response['predictions']
 
 
+def predict_image(image, img_shape=224):
 
-file_img = 'testimage1.jpeg'
-img_shape = 224
+    np_image = np.array(cv2.imread(image))
 
-np_image = np.array(cv2.imread(file_img))
+    category_index = {1: {'id': 1, 'name': 'D00'}, 2: {'id': 2, 'name': 'D01'},3: {'id': 3, 'name': 'D02'}, 4: {'id': 4, 'name': 'D03Al'}}
 
-category_index = {1: {'id': 1, 'name': 'D00'}, 2: {'id': 2, 'name': 'D01'},3: {'id': 3, 'name': 'D02'}, 4: {'id': 4, 'name': 'D03Al'}}
+    img = tf.io.read_file(image)
+    img = tf.io.decode_image(img)
+    img = tf.image.resize(img, [img_shape, img_shape])
 
-img = tf.io.read_file(file_img)
-img = tf.io.decode_image(img)
-img = tf.image.resize(img, [img_shape, img_shape])
+    img = tf.cast(tf.expand_dims(img, axis=0), tf.int16)
 
-img = tf.cast(tf.expand_dims(img, axis=0), tf.int16)
+    instances_list = img.numpy().tolist()
 
-instances_list = img.numpy().tolist()
+    result = predict_json(project, region, model, instances_list, version)[0]
 
-result = predict_json(project, region, model, instances_list, version)[0]
+    test = np.array(result['detection_classes']).astype(np.int64)
 
-test = np.array(result['detection_classes']).astype(np.int64)
+    num_detections = int(result.pop('num_detections'))
 
-num_detections = int(result.pop('num_detections'))
+    viz_utils.visualize_boxes_and_labels_on_image_array(
+        np_image,
+        np.array(result["detection_boxes"]),
+        np.array(result["detection_classes"]).astype(np.int64),
+        np.array(result["detection_scores"]),
+        category_index,
+        use_normalized_coordinates=True,
+        max_boxes_to_draw=5,
+        min_score_thresh=.3,
+        agnostic_mode=False
+    )
 
-viz_utils.visualize_boxes_and_labels_on_image_array(
-    np_image,
-    np.array(result["detection_boxes"]),
-    np.array(result["detection_classes"]).astype(np.int64),
-    np.array(result["detection_scores"]),
-    category_index,
-    use_normalized_coordinates=True,
-    max_boxes_to_draw=5,
-    min_score_thresh=.3,
-    agnostic_mode=False
-)
+    return cv2.cvtColor(np_image, cv2.COLOR_BGR2RGB)
 
-output_image = cv2.cvtColor(np_image, cv2.COLOR_BGR2RGB)
+    
+def main():
+    image = 'testimage.jpeg'
+    with open(image, "rb") as f:
+        im_b64 = base64.b64encode(f.read())
 
-cv2.imwrite("output.jpg", output_image)
+    im_bytes = base64.b64decode(im_b64)
+    im_arr = np.frombuffer(im_bytes, dtype=np.uint8)
+    img = cv2.imdecode(im_arr, flags=cv2.IMREAD_COLOR)
+    cv2.imwrite("tmp.jpg", img)
+# print(open(image,'rb').read())
+# cv2.imwrite("output.jpg", )
+# print(predict_image(image))
+
 # detections =  {key: value[:num_detections].numpy() for key, value in result.items()}
 
 # print(result['detection_classes'].astype(np.int64))
