@@ -7,17 +7,19 @@ import googleapiclient.discovery
 from google.api_core.client_options import ClientOptions
 from object_detection.utils import visualization_utils as viz_utils
 import base64
-
 import numpy as np
 from matplotlib import pyplot as plt
+import configparser
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "tensile-ship-312415-81a2e149e9b9.json"
+config = configparser.ConfigParser()
+config.read('config.ini')
 
-project = "tensile-ship-312415"
-region = "asia-southeast1"
-model = "jagajalan_model"
-version ="v0001"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config['GCP']['GOOGLE_APPLICATION_CREDENTIALS']
 
+project = config['GCP']['PROJECT_ID']
+region = config['GCP']['REGION']
+model = config['GCP']['MODEL_NAME']
+version = config['GCP']['MODEL_VERSION']
 
 def predict_json(project, region, model, instances, version=None):
     """Send json data to a deployed model for prediction.
@@ -92,27 +94,3 @@ def predict_image(image, img_shape=224):
     )
 
     return cv2.cvtColor(np_image, cv2.COLOR_BGR2RGB)
-
-    
-def main():
-    image = 'testimage.jpeg'
-    with open(image, "rb") as f:
-        im_b64 = base64.b64encode(f.read())
-
-    im_bytes = base64.b64decode(im_b64)
-    im_arr = np.frombuffer(im_bytes, dtype=np.uint8)
-    img = cv2.imdecode(im_arr, flags=cv2.IMREAD_COLOR)
-    cv2.imwrite("tmp.jpg", img)
-# print(open(image,'rb').read())
-# cv2.imwrite("output.jpg", )
-# print(predict_image(image))
-
-# detections =  {key: value[:num_detections].numpy() for key, value in result.items()}
-
-# print(result['detection_classes'].astype(np.int64))
-# print(num_detections)
-
-# with open('result.json','w') as req:
-#   req.write(str(result))
-
-# print(input_data_json)
