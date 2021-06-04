@@ -65,8 +65,8 @@ def predict_image(image, img_shape=224):
 
     np_image = np.array(cv2.imread(image))
 
-    category_index = {1: {'id': 1, 'name': 'D00'}, 2: {'id': 2, 'name': 'D01'},3: {'id': 3, 'name': 'D02'}, 4: {'id': 4, 'name': 'D03Al'}}
-
+    category_index = {1: {'id': 1, 'name': 'D00'}, 2: {'id': 2, 'name': 'D01'},3: {'id': 3, 'name': 'D02'}, 4: {'id': 4, 'name': 'D03'}}
+    class_name = ["D00","D01","D02","D03"]
     img = tf.io.read_file(image)
     img = tf.io.decode_image(img)
     img = tf.image.resize(img, [img_shape, img_shape])
@@ -77,7 +77,11 @@ def predict_image(image, img_shape=224):
 
     result = predict_json(project, region, model, instances_list, version)[0]
 
+    
     test = np.array(result['detection_classes']).astype(np.int64)
+    pred_class = category_index[tf.argmax(result)]
+
+    print(pred_class)
 
     num_detections = int(result.pop('num_detections'))
 
